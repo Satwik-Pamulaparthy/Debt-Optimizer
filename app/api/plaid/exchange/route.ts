@@ -59,7 +59,9 @@ export async function POST(req: NextRequest) {
       try {
         const liabRes = await plaid.liabilitiesGet({ access_token });
         for (const l of liabRes.data.liabilities.credit ?? []) {
-          liabMap[l.account_id] = l;
+          if (l.account_id) {
+            liabMap[l.account_id] = l;
+          }
         }
       } catch { /* liabilities not available for all institutions */ }
     }
