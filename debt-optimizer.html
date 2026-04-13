@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debt Optimizer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg-primary:    #f5f6fa;
+  --bg-secondary:  #ffffff;
+  --bg-tertiary:   #edf0f5;
+  --text-primary:  #0f1117;
+  --text-secondary:#5c6470;
+  --text-tertiary: #9aa0ab;
+  --border:        rgba(0,0,0,0.08);
+  --border-strong: rgba(0,0,0,0.13);
+  --surface:       #ffffff;
+  --blue:   #3b82f6;
+  --red:    #ef4444;
+  --amber:  #f59e0b;
+  --green:  #10b981;
+  --radius-lg: 12px;
+  --radius-md:  8px;
+  --radius-sm:  6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary:    #0d1117;
+    --bg-secondary:  #161b24;
+    --bg-tertiary:   #1c2332;
+    --text-primary:  #e2e8f0;
+    --text-secondary:#8b95a1;
+    --text-tertiary: #5c6470;
+    --border:        rgba(255,255,255,0.07);
+    --border-strong: rgba(255,255,255,0.13);
+    --surface:       #1c2332;
+  }
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+/* ── Plaid bar ─────────────────────────────────────────────────── */
+.plaid-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  background: var(--bg-secondary);
+  border-bottom: 0.5px solid var(--border);
+  font-size: 12px;
+  color: var(--text-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.plaid-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.plaid-name { font-weight: 500; color: var(--text-primary); }
+.plaid-bar .spacer { flex: 1; }
+.plaid-sync { color: var(--text-tertiary); }
+
+/* ── Layout ────────────────────────────────────────────────────── */
+.wrap { max-width: 680px; margin: 0 auto; padding: 0 16px 48px; }
+
+/* ── Summary cards ─────────────────────────────────────────────── */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 16px 0 14px;
+}
+@media (min-width: 480px) { .metrics { grid-template-columns: repeat(4, 1fr); } }
+.metric {
+  background: var(--bg-secondary);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 13px 14px;
+}
+.metric-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 5px; }
+.metric-value { font-size: 22px; font-weight: 500; line-height: 1.15; }
+.metric-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
+
+/* ── Tab bar ───────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  gap: 3px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  padding: 3px;
+  margin-bottom: 14px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 7px 6px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.12s;
+}
+.tab-btn.active {
+  background: var(--surface);
+  border: 0.5px solid var(--border-strong);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── Section header ────────────────────────────────────────────── */
+.sh {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+
+/* ── Strategy toggle ───────────────────────────────────────────── */
+.strat-toggle {
+  display: flex;
+  gap: 3px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  width: fit-content;
+  margin-bottom: 14px;
+}
+.strat-btn {
+  padding: 6px 18px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.strat-btn.active {
+  background: var(--surface);
+  border: 0.5px solid var(--border-strong);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ── Priority cards ────────────────────────────────────────────── */
+.p-card {
+  background: var(--bg-secondary);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 13px 14px 16px;
+  margin-bottom: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.p-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+}
+.p-card.r1::after { background: var(--red); }
+.p-card.r2::after { background: var(--blue); }
+.p-card.r3::after { background: var(--amber); }
+.p-card.r4::after { background: var(--green); }
+
+.p-top { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.p-badge {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 500; flex-shrink: 0;
+}
+.r1 .p-badge { background: rgba(239,68,68,0.12); color: var(--red); }
+.r2 .p-badge { background: rgba(59,130,246,0.12); color: var(--blue); }
+.r3 .p-badge { background: rgba(245,158,11,0.12); color: var(--amber); }
+.r4 .p-badge { background: rgba(16,185,129,0.12); color: var(--green); }
+
+.p-name { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+.p-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); }
+.due-badge {
+  padding: 2px 7px; border-radius: 20px; font-size: 11px; font-weight: 500;
+}
+.d-red    { background: rgba(239,68,68,0.10);  color: var(--red); }
+.d-yellow { background: rgba(245,158,11,0.10); color: var(--amber); }
+.d-blue   { background: rgba(59,130,246,0.10); color: var(--blue); }
+
+.p-row { display: flex; justify-content: space-between; align-items: baseline; }
+.p-bal { font-size: 17px; font-weight: 500; }
+.p-limit { font-size: 11px; color: var(--text-tertiary); }
+.p-note { font-size: 11px; color: var(--text-secondary); margin-top: 7px; font-style: italic; }
+
+/* ── Slider section ────────────────────────────────────────────── */
+.slider-wrap {
+  background: var(--bg-secondary);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 15px 16px;
+  margin-top: 10px;
+}
+.slider-lbl {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; color: var(--text-secondary); margin-bottom: 11px;
+}
+.slider-amt { font-size: 18px; font-weight: 500; color: var(--blue); }
+input[type=range] {
+  width: 100%; height: 4px; border-radius: 2px;
+  -webkit-appearance: none; appearance: none;
+  background: var(--bg-tertiary); outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--blue); border: 2.5px solid var(--surface); cursor: pointer;
+}
+input[type=range]::-moz-range-thumb {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--blue); border: 2.5px solid var(--surface);
+  border: none; cursor: pointer;
+}
+.slider-ends {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: var(--text-tertiary); margin-top: 4px;
+}
+.stat-row { display: flex; gap: 10px; margin-top: 13px; }
+.stat-box {
+  flex: 1; background: var(--bg-tertiary);
+  border-radius: var(--radius-md); padding: 10px 12px;
+}
+.stat-box-lbl { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
+.stat-box-val { font-size: 17px; font-weight: 500; }
+
+/* ── Timeline bars ─────────────────────────────────────────────── */
+.prog-item {
+  background: var(--bg-secondary);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 13px 14px;
+  margin-bottom: 8px;
+}
+.prog-hdr { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
+.prog-name { font-weight: 500; }
+.prog-mo { color: var(--text-secondary); }
+.prog-track { height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 3px; transition: width 0.25s ease; }
+
+/* ── Chart ─────────────────────────────────────────────────────── */
+.chart-wrap {
+  background: var(--bg-secondary);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 15px 16px;
+  margin-top: 10px;
+}
+.chart-title { font-size: 13px; font-weight: 500; margin-bottom: 12px; }
+
+/* ── AI Suggestions ────────────────────────────────────────────── */
+.sug-card {
+  background: var(--bg-secondary);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 13px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+}
+.sug-icon { font-size: 19px; flex-shrink: 0; line-height: 1; margin-top: 1px; }
+.sug-title { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+.sug-body { font-size: 12px; color: var(--text-secondary); line-height: 1.55; }
+
+/* ── Accounts ──────────────────────────────────────────────────── */
+.acct-card {
+  background: var(--bg-secondary);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+}
+.acct-hdr { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.acct-name { font-size: 14px; font-weight: 500; }
+.acct-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+.acct-bal { font-size: 18px; font-weight: 500; text-align: right; }
+.acct-of { font-size: 11px; color: var(--text-tertiary); text-align: right; margin-top: 2px; }
+.util-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
+.util-track { height: 5px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden; margin-bottom: 9px; }
+.util-fill { height: 100%; border-radius: 3px; }
+.u-green { background: var(--green); }
+.u-yellow { background: var(--amber); }
+.u-red { background: var(--red); }
+.acct-footer { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); }
+
+.savings-row {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--text-secondary); margin-top: 5px;
+}
+.callout {
+  background: rgba(245,158,11,0.07);
+  border: 0.5px solid rgba(245,158,11,0.22);
+  border-radius: var(--radius-md);
+  padding: 11px 13px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+</style>
+</head>
+<body>
+
+<!-- Plaid bar -->
+<div class="plaid-bar">
+  <div class="plaid-dot"></div>
+  <span class="plaid-name">Plaid</span>
+  <span>4 accounts connected</span>
+  <span class="spacer"></span>
+  <span class="plaid-sync">Synced just now</span>
+</div>
+
+<div class="wrap">
+
+  <!-- Summary metrics -->
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">Total Debt</div>
+      <div class="metric-value">$14,820</div>
+      <div class="metric-sub">4 cards</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Min Due This Month</div>
+      <div class="metric-value">$436</div>
+      <div class="metric-sub">across all cards</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Available to Pay</div>
+      <div class="metric-value">$2,100</div>
+      <div class="metric-sub">from savings buffer</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Interest / Month</div>
+      <div class="metric-value">$198</div>
+      <div class="metric-sub">avg 16.2% APR</div>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('priority',this)">Payment Priority</button>
+    <button class="tab-btn" onclick="switchTab('timeline',this)">Timeline</button>
+    <button class="tab-btn" onclick="switchTab('suggestions',this)">AI Suggestions</button>
+    <button class="tab-btn" onclick="switchTab('accounts',this)">Accounts</button>
+  </div>
+
+  <!-- ── Tab 1: Payment Priority ───────────────────────────────── -->
+  <div id="tab-priority" class="tab-panel active">
+    <div class="strat-toggle">
+      <button class="strat-btn active" id="btn-avalanche" onclick="setStrategy('avalanche')">🏔 Avalanche</button>
+      <button class="strat-btn" id="btn-snowball" onclick="setStrategy('snowball')">⛄ Snowball</button>
+    </div>
+    <div class="sh">Pay In This Order</div>
+    <div id="priority-list"></div>
+    <div class="slider-wrap">
+      <div class="slider-lbl">
+        <span>Extra monthly payment</span>
+        <span class="slider-amt" id="slider-display">$300</span>
+      </div>
+      <input type="range" id="extra-slider" min="0" max="1200" step="50" value="300"
+             oninput="onSlider(this.value)">
+      <div class="slider-ends"><span>$0</span><span>$1,200</span></div>
+      <div class="stat-row">
+        <div class="stat-box">
+          <div class="stat-box-lbl">Debt-free in</div>
+          <div class="stat-box-val" id="stat-months">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-lbl">Interest saved vs minimums</div>
+          <div class="stat-box-val" id="stat-saved" style="color:var(--green)">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 2: Timeline ──────────────────────────────────────── -->
+  <div id="tab-timeline" class="tab-panel">
+    <div class="sh">Months to Payoff Per Card</div>
+    <div id="timeline-bars"></div>
+    <div class="chart-wrap">
+      <div class="chart-title">Running Balance Over Time</div>
+      <canvas id="balance-chart" height="190"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Tab 3: AI Suggestions ────────────────────────────────── -->
+  <div id="tab-suggestions" class="tab-panel">
+    <div class="sh">Personalized Recommendations</div>
+
+    <div class="sug-card">
+      <span class="sug-icon">🔥</span>
+      <div>
+        <div class="sug-title">Pay Citi Double Cash first — 24.99% APR costs $67/month</div>
+        <div class="sug-body">At 24.99% APR, every $100 you owe Citi costs $2.08 per month in interest. Directing your extra payments here with the Avalanche method saves the most money overall.</div>
+      </div>
+    </div>
+
+    <div class="sug-card">
+      <span class="sug-icon">⏰</span>
+      <div>
+        <div class="sug-title">Chase Sapphire due in 10 days — pay by Apr 22</div>
+        <div class="sug-body">Pay at least $116 by Apr 22 to avoid a late fee and potential penalty APR (can jump to 29.99%). Pay now to be safe — it's only 10 days away.</div>
+      </div>
+    </div>
+
+    <div class="sug-card">
+      <span class="sug-icon">📊</span>
+      <div>
+        <div class="sug-title">Citi utilization is 64% — paying to under 30% could add 20–40 points</div>
+        <div class="sug-body">Credit utilization above 30% hurts your score. Paying Citi below $1,500 (30% of $5,000 limit) signals to lenders that you're managing credit responsibly.</div>
+      </div>
+    </div>
+
+    <div class="sug-card">
+      <span class="sug-icon">💰</span>
+      <div>
+        <div class="sug-title">Savings earns 0.01% while debt costs 17–25% — use $2,840 toward Citi</div>
+        <div class="sug-body">Paying off Citi Double Cash with your available $2,840 in savings eliminates $67/month in interest — vs. ~$0.24/year earned keeping it in Chase savings at 0.01% APY.</div>
+      </div>
+    </div>
+
+    <div class="sug-card">
+      <span class="sug-icon">🔄</span>
+      <div>
+        <div class="sug-title">Consider a 0% balance transfer for Chase Sapphire ($5,800 at 20.24%)</div>
+        <div class="sug-body">Transferring $5,800 to a 0% intro APR card (e.g., Citi Simplicity, 21 months) could save ~$580 in interest during the promotional period. A 3% transfer fee (~$174) still leaves you $400+ ahead.</div>
+      </div>
+    </div>
+
+    <div class="sug-card">
+      <span class="sug-icon">⚡</span>
+      <div>
+        <div class="sug-title">Set up autopay on all cards for minimums to avoid late fees</div>
+        <div class="sug-body">A single missed payment triggers a $30–40 late fee and can trigger penalty APR. Autopay for minimums on all four cards protects you — then make manual extra payments on top.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 4: Accounts ───────────────────────────────────────── -->
+  <div id="tab-accounts" class="tab-panel">
+    <div class="sh">Credit Cards</div>
+    <div id="accounts-list"></div>
+
+    <div class="sh" style="margin-top:16px">Savings Account</div>
+    <div class="acct-card">
+      <div class="acct-hdr">
+        <div>
+          <div class="acct-name">Chase Total Checking Savings</div>
+          <div class="acct-sub">Chase · Savings · 0.01% APY</div>
+        </div>
+        <div>
+          <div class="acct-bal">$6,340</div>
+          <div class="acct-of">available balance</div>
+        </div>
+      </div>
+      <div class="savings-row">
+        <span>Emergency fund reserved</span>
+        <span>$3,500</span>
+      </div>
+      <div class="savings-row">
+        <span>Available for debt payments</span>
+        <span style="color:var(--green)">$2,840</span>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span>⚠️</span>
+      <div>Keep at least $3,500 as an emergency fund before using savings for debt. This covers ~2 months of expenses and prevents you from taking on new high-interest debt if an unexpected cost arises.</div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+// ── Data ───────────────────────────────────────────────────────────────────
+const CARDS = [
+  { id:'citi',  name:'Citi Double Cash',  bank:'Citi',        apr:24.99, balance:3200, limit:5000,  minDue:64,  dueDate:'Apr 18', daysUntil:6  },
+  { id:'chase', name:'Chase Sapphire',    bank:'Chase',       apr:20.24, balance:5800, limit:10000, minDue:116, dueDate:'Apr 22', daysUntil:10 },
+  { id:'disc',  name:'Discover It',       bank:'Discover',    apr:17.49, balance:2100, limit:4000,  minDue:42,  dueDate:'Apr 27', daysUntil:15 },
+  { id:'wells', name:'Wells Fargo Active',bank:'Wells Fargo', apr:19.99, balance:3720, limit:6000,  minDue:74,  dueDate:'May 3',  daysUntil:21 },
+];
+
+const NOTES = {
+  avalanche: {
+    citi:  'Highest APR at 24.99% — costs the most per dollar owed. Attack first.',
+    chase: 'Second highest at 20.24% APR — focus here after Citi is cleared.',
+    wells: 'Third highest at 19.99% APR — third in line after Chase.',
+    disc:  'Lowest APR at 17.49% — pay minimums only until higher-rate cards are gone.',
+  },
+  snowball: {
+    disc:  'Smallest balance at $2,100 — fastest win to build momentum.',
+    citi:  'Second smallest balance at $3,200 — next quick win to eliminate.',
+    wells: 'Third smallest balance at $3,720 — keeping the snowball rolling.',
+    chase: 'Largest balance at $5,800 — tackle last with full snowball force behind you.',
+  },
+};
+
+const BAR_COLORS = ['var(--red)', 'var(--blue)', 'var(--amber)', 'var(--green)'];
+
+let strategy   = 'avalanche';
+let extraPay   = 300;
+let chart      = null;
+
+// ── Simulation ─────────────────────────────────────────────────────────────
+function simulate(cards, extra, strat) {
+  // Clone balances
+  const bal = {};
+  for (const c of cards) bal[c.id] = c.balance;
+
+  // Priority order (fixed at start; re-sort each month not needed — standard debt payoff)
+  const order = strat === 'avalanche'
+    ? [...cards].sort((a,b) => b.apr - a.apr)
+    : [...cards].sort((a,b) => a.balance - b.balance);
+
+  let month = 0;
+  let totalInterest = 0;
+  const payoffAt = {};
+  const startBal = cards.reduce((s,c) => s + c.balance, 0);
+  const timeline = [startBal];
+
+  while (order.some(c => bal[c.id] > 0.005) && month < 600) {
+    month++;
+
+    // Step 1 — apply monthly interest to all active balances
+    for (const c of order) {
+      if (bal[c.id] <= 0) continue;
+      const interest = bal[c.id] * (c.apr / 100 / 12);
+      totalInterest += interest;
+      bal[c.id] += interest;
+    }
+
+    // Step 2 — pay minimum on every card
+    for (const c of order) {
+      if (bal[c.id] <= 0) continue;
+      const pay = Math.min(c.minDue, bal[c.id]);
+      bal[c.id] = Math.max(0, bal[c.id] - pay);
+      if (bal[c.id] < 0.01 && !payoffAt[c.id]) payoffAt[c.id] = month;
+    }
+
+    // Step 3 — apply extra to priority cards (cascade when one clears mid-month)
+    let left = extra;
+    for (const c of order) {
+      if (left < 0.01) break;
+      if (bal[c.id] <= 0) continue;
+      const pay = Math.min(left, bal[c.id]);
+      bal[c.id] = Math.max(0, bal[c.id] - pay);
+      left -= pay;
+      if (bal[c.id] < 0.01 && !payoffAt[c.id]) payoffAt[c.id] = month;
+    }
+
+    timeline.push(Math.max(0, order.reduce((s,c) => s + bal[c.id], 0)));
+  }
+
+  return {
+    months:  month,
+    interest: Math.round(totalInterest),
+    timeline,
+    payoffAt,
+    order,
+  };
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function fmtMonths(m) {
+  if (m <= 0) return 'Paid off!';
+  const y = Math.floor(m / 12), mo = m % 12;
+  if (y === 0) return mo + ' mo';
+  if (mo === 0) return y + ' yr';
+  return y + ' yr ' + mo + ' mo';
+}
+
+function dueBadge(days) {
+  if (days <= 5)  return { cls:'d-red',    txt:'Due in ' + days + 'd' };
+  if (days <= 12) return { cls:'d-yellow', txt:'Due in ' + days + 'd' };
+  return               { cls:'d-blue',   txt:'Due in ' + days + 'd' };
+}
+
+function utilCls(pct) {
+  if (pct < 40) return 'u-green';
+  if (pct < 70) return 'u-yellow';
+  return 'u-red';
+}
+
+function rankCls(i) { return 'r' + (i+1); }
+
+// ── Render: Priority List ──────────────────────────────────────────────────
+function renderPriority() {
+  const order = strategy === 'avalanche'
+    ? [...CARDS].sort((a,b) => b.apr - a.apr)
+    : [...CARDS].sort((a,b) => a.balance - b.balance);
+  const notes = NOTES[strategy];
+
+  document.getElementById('priority-list').innerHTML = order.map((c, i) => {
+    const util  = Math.round(c.balance / c.limit * 100);
+    const badge = dueBadge(c.daysUntil);
+    return `
+<div class="p-card ${rankCls(i)}">
+  <div class="p-top">
+    <div class="p-badge">#${i+1}</div>
+    <div>
+      <div class="p-name">${c.name}</div>
+      <div class="p-meta">
+        <span>${c.apr}% APR</span><span>·</span>
+        <span>Min $${c.minDue}</span><span>·</span>
+        <span>${util}% utilization</span>
+        <span class="due-badge ${badge.cls}">${badge.txt}</span>
+      </div>
+    </div>
+  </div>
+  <div class="p-row">
+    <div class="p-bal">$${c.balance.toLocaleString()}</div>
+    <div class="p-limit">of $${c.limit.toLocaleString()} limit</div>
+  </div>
+  <div class="p-note">${notes[c.id]}</div>
+</div>`;
+  }).join('');
+
+  updateStats();
+}
+
+function updateStats() {
+  const result   = simulate(CARDS, extraPay, strategy);
+  const baseline = simulate(CARDS, 0,        strategy);
+  const saved    = Math.max(0, baseline.interest - result.interest);
+  document.getElementById('stat-months').textContent = fmtMonths(result.months);
+  document.getElementById('stat-saved').textContent  = '$' + saved.toLocaleString();
+}
+
+// ── Render: Timeline ───────────────────────────────────────────────────────
+function renderTimeline() {
+  const result = simulate(CARDS, extraPay, strategy);
+  const max    = result.months;
+
+  document.getElementById('timeline-bars').innerHTML = result.order.map((c, i) => {
+    const mo  = result.payoffAt[c.id] || max;
+    const pct = max > 0 ? Math.round(mo / max * 100) : 100;
+    return `
+<div class="prog-item">
+  <div class="prog-hdr">
+    <span class="prog-name">${c.name}</span>
+    <span class="prog-mo">${fmtMonths(mo)}</span>
+  </div>
+  <div class="prog-track">
+    <div class="prog-fill" style="width:${pct}%;background:${BAR_COLORS[i]}"></div>
+  </div>
+</div>`;
+  }).join('');
+
+  renderChart(result.timeline);
+}
+
+function renderChart(timeline) {
+  const isDark  = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridClr = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const tickClr = isDark ? '#5c6470' : '#9aa0ab';
+  const labels  = timeline.map((_, i) => i === 0 ? 'Now' : 'Mo ' + i);
+
+  if (chart) {
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = timeline;
+    chart.update('none');
+    return;
+  }
+
+  const ctx = document.getElementById('balance-chart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: timeline,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,0.07)',
+        borderWidth: 1.5,
+        fill: true,
+        tension: 0.35,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointHoverBackgroundColor: '#3b82f6',
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: isDark ? '#1c2332' : '#fff',
+          borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+          borderWidth: 0.5,
+          titleColor: tickClr,
+          bodyColor: isDark ? '#e2e8f0' : '#0f1117',
+          bodyFont: { size: 12 },
+          callbacks: {
+            label: ctx => '$' + Math.round(ctx.parsed.y).toLocaleString(),
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          border: { display: false },
+          ticks: { font: { size: 10 }, color: tickClr, maxTicksLimit: 9 },
+        },
+        y: {
+          min: 0,
+          grid: { color: gridClr },
+          border: { display: false },
+          ticks: {
+            font: { size: 10 },
+            color: tickClr,
+            callback: v => '$' + (v / 1000).toFixed(0) + 'k',
+          },
+        },
+      },
+    },
+  });
+}
+
+// ── Render: Accounts ───────────────────────────────────────────────────────
+function renderAccounts() {
+  document.getElementById('accounts-list').innerHTML = CARDS.map(c => {
+    const util = Math.round(c.balance / c.limit * 100);
+    const cls  = utilCls(util);
+    const icon = c.daysUntil <= 5 ? '🔴' : c.daysUntil <= 12 ? '🟡' : '🔵';
+    return `
+<div class="acct-card">
+  <div class="acct-hdr">
+    <div>
+      <div class="acct-name">${c.name}</div>
+      <div class="acct-sub">${c.bank} · ${c.apr}% APR · Due ${c.dueDate}</div>
+    </div>
+    <div>
+      <div class="acct-bal">$${c.balance.toLocaleString()}</div>
+      <div class="acct-of">of $${c.limit.toLocaleString()}</div>
+    </div>
+  </div>
+  <div class="util-row"><span>Utilization</span><span>${util}%</span></div>
+  <div class="util-track"><div class="util-fill ${cls}" style="width:${util}%"></div></div>
+  <div class="acct-footer">
+    <span>Min due: $${c.minDue}</span>
+    <span>${icon} ${c.dueDate}</span>
+  </div>
+</div>`;
+  }).join('');
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  btn.classList.add('active');
+  if (tab === 'timeline') renderTimeline();
+  if (tab === 'accounts') renderAccounts();
+}
+
+// ── Event handlers ─────────────────────────────────────────────────────────
+function setStrategy(s) {
+  strategy = s;
+  document.getElementById('btn-avalanche').classList.toggle('active', s === 'avalanche');
+  document.getElementById('btn-snowball').classList.toggle('active', s === 'snowball');
+  renderPriority();
+  if (document.getElementById('tab-timeline').classList.contains('active')) renderTimeline();
+}
+
+function onSlider(val) {
+  extraPay = parseInt(val);
+  document.getElementById('slider-display').textContent = '$' + extraPay.toLocaleString();
+  updateStats();
+  if (document.getElementById('tab-timeline').classList.contains('active')) renderTimeline();
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+renderPriority();
+</script>
+</body>
+</html>

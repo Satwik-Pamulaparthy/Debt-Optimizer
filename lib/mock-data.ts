@@ -1,0 +1,158 @@
+import { BankAccount, Debt, UserProfile, Notification } from '@/types';
+
+export const MOCK_USER: UserProfile = {
+  id: 'user-1',
+  email: 'alex@example.com',
+  name: 'Alex Johnson',
+  monthlyIncome: 7500,
+  monthlyExpenses: 3200,
+  goal: 'balanced',
+  selectedStrategy: 'avalanche',
+  onboardingComplete: true,
+  createdAt: '2024-01-01',
+  country: 'US',
+  currency: 'USD',
+};
+
+export const MOCK_BANK_ACCOUNTS: BankAccount[] = [
+  {
+    id: 'bank-1',
+    name: 'Primary Checking',
+    institution: 'Chase Bank',
+    type: 'checking',
+    balance: 4320.50,
+    lastUpdated: new Date().toISOString(),
+    mask: '4291',
+  },
+  {
+    id: 'bank-2',
+    name: 'Emergency Savings',
+    institution: 'Ally Bank',
+    type: 'savings',
+    balance: 8500.00,
+    lastUpdated: new Date().toISOString(),
+    mask: '8834',
+  },
+];
+
+export const MOCK_DEBTS: Debt[] = [
+  {
+    id: 'debt-1',
+    name: 'Chase Sapphire',
+    institution: 'Chase Bank',
+    type: 'credit_card',
+    balance: 6200,
+    originalBalance: 8000,
+    minimumPayment: 124,
+    apr: 24.99,
+    dueDate: 15,
+    lateFee: 40,
+    creditLimit: 10000,
+    isActive: true,
+    createdAt: '2023-06-01',
+  },
+  {
+    id: 'debt-2',
+    name: 'Citi Double Cash',
+    institution: 'Citibank',
+    type: 'credit_card',
+    balance: 2850,
+    originalBalance: 5000,
+    minimumPayment: 57,
+    apr: 19.99,
+    dueDate: 22,
+    lateFee: 30,
+    creditLimit: 5000,
+    isActive: true,
+    createdAt: '2022-11-01',
+  },
+  {
+    id: 'debt-3',
+    name: 'Capital One Quicksilver',
+    institution: 'Capital One',
+    type: 'credit_card',
+    balance: 1450,
+    originalBalance: 3000,
+    minimumPayment: 36,
+    apr: 22.49,
+    dueDate: new Date().getDate() + 5 <= 28 ? new Date().getDate() + 5 : 5,
+    lateFee: 35,
+    creditLimit: 3000,
+    isActive: true,
+    createdAt: '2023-02-15',
+  },
+  {
+    id: 'debt-4',
+    name: 'Student Loan',
+    institution: 'Navient',
+    type: 'student_loan',
+    balance: 14500,
+    originalBalance: 28000,
+    minimumPayment: 185,
+    apr: 5.80,
+    dueDate: 1,
+    lateFee: 25,
+    isActive: true,
+    createdAt: '2020-08-01',
+  },
+  {
+    id: 'debt-5',
+    name: 'Auto Loan',
+    institution: 'Toyota Financial',
+    type: 'auto_loan',
+    balance: 9200,
+    originalBalance: 22000,
+    minimumPayment: 380,
+    apr: 6.49,
+    dueDate: 10,
+    lateFee: 30,
+    isActive: true,
+    createdAt: '2021-03-01',
+  },
+];
+
+export const MOCK_NOTIFICATIONS: Notification[] = [
+  {
+    id: 'notif-1',
+    type: 'due_soon',
+    title: 'Capital One due in 5 days',
+    message: 'Your Capital One Quicksilver payment of $36 is due soon. Pay now to avoid a $35 late fee.',
+    debtId: 'debt-3',
+    read: false,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'notif-2',
+    type: 'tip',
+    title: 'You could save $1,240 in interest',
+    message: 'Switching to the Avalanche strategy and adding $200/month to your budget could save you $1,240 in interest.',
+    read: false,
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+  },
+  {
+    id: 'notif-3',
+    type: 'milestone',
+    title: 'Citi Double Cash is 43% paid off!',
+    message: 'Great progress! You have paid down $2,150 of your original $5,000 balance.',
+    debtId: 'debt-2',
+    read: true,
+    createdAt: new Date(Date.now() - 172800000).toISOString(),
+  },
+];
+
+/** Map of debt type to emoji + label */
+export const DEBT_TYPE_META: Record<string, { icon: string; label: string; color: string }> = {
+  credit_card:    { icon: '💳', label: 'Credit Card',    color: '#f472b6' },
+  personal_loan:  { icon: '🏦', label: 'Personal Loan',  color: '#818cf8' },
+  student_loan:   { icon: '🎓', label: 'Student Loan',   color: '#60a5fa' },
+  auto_loan:      { icon: '🚗', label: 'Auto Loan',      color: '#34d399' },
+  mortgage:       { icon: '🏠', label: 'Mortgage',       color: '#fb923c' },
+  medical:        { icon: '🏥', label: 'Medical',        color: '#f87171' },
+  other:          { icon: '📋', label: 'Other',          color: '#94a3b8' },
+};
+
+export const ACCOUNT_TYPE_META: Record<string, { icon: string; label: string; color: string }> = {
+  checking:   { icon: '🏦', label: 'Checking',    color: '#60a5fa' },
+  savings:    { icon: '🐖', label: 'Savings',     color: '#34d399' },
+  investment: { icon: '📈', label: 'Investment',  color: '#a78bfa' },
+};

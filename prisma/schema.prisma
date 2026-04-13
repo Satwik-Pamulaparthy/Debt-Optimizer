@@ -1,0 +1,110 @@
+// Debt Optimizer — PostgreSQL Schema
+// Run: npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  name                String
+  passwordHash        String
+  monthlyIncome       Float     @default(0)
+  monthlyExpenses     Float     @default(0)
+  goal                String    @default("balanced")
+  selectedStrategy    String    @default("avalanche")
+  onboardingComplete  Boolean   @default(false)
+  country             String    @default("US")
+  currency            String    @default("USD")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  bankAccounts        BankAccount[]
+  debts               Debt[]
+  notifications       Notification[]
+  paymentLogs         PaymentLog[]
+
+  @@map("users")
+}
+
+// ─── Bank Accounts ────────────────────────────────────────────────────────────
+model BankAccount {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  institution String
+  type        String   // checking | savings | investment
+  balance     Float
+  plaidId     String?  @unique  // Plaid account ID for sync
+  mask        String?  // Last 4 digits
+  lastUpdated DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@map("bank_accounts")
+}
+
+// ─── Debts ────────────────────────────────────────────────────────────────────
+model Debt {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  institution     String
+  type            String   // credit_card | personal_loan | student_loan | auto_loan | mortgage | medical | other
+  balance         Float
+  originalBalance Float
+  minimumPayment  Float
+  apr             Float    // Annual Percentage Rate
+  dueDate         Int      // Day of month 1-31
+  lateFee         Float    @default(0)
+  creditLimit     Float?
+  plaidId         String?  @unique  // Plaid account ID for sync
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  paymentLogs     PaymentLog[]
+
+  @@map("debts")
+}
+
+// ─── Payment Logs ─────────────────────────────────────────────────────────────
+model PaymentLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  debtId      String
+  debt        Debt     @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  amount      Float
+  principal   Float
+  interest    Float
+  newBalance  Float
+  paidAt      DateTime @default(now())
+  notes       String?
+
+  @@map("payment_logs")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // due_soon | due_today | overdue | milestone | tip
+  title     String
+  message   String
+  debtId    String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
